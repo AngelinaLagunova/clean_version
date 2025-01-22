@@ -8,7 +8,7 @@ class MyClass {
 
 int main() {
     int a;
-    float b = 15;
+    float b =1;
     float bb;
     b++;
     b = a + 5 * 6 / 3;
@@ -17,6 +17,9 @@ int main() {
         cout << b;
         cout << "Pamagiti";
     }
+   if (a == b) {
+   a++;
+}
     cout << b;
     cin >> a;
     string str = "strg";

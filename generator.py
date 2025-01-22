@@ -25,6 +25,19 @@ class CodeGenerator:
                     for sub_child in child.children:
                         self.generate(sub_child)
                     self.code.append('}')
+        elif node.node_type == 'If':
+            for child in node.children:
+                if child.node_type == 'Condition':
+                    self.code.append(f'if ({" ".join([sub_child.value for sub_child in child.children])})' + '{')
+                if child.node_type == 'Body':
+                    for sub_child in child.children:
+                        self.generate(sub_child)
+                    self.code.append('}')
+                if child.node_type == 'Else':  # Обработка ветки else
+                    self.code.append('else {')
+                    for sub_child in child.children:
+                        self.generate(sub_child)
+                    self.code.append('}')
         elif node.node_type == 'Body':
             for child in node.children:
                 self.generate(child)
@@ -33,7 +46,7 @@ class CodeGenerator:
         elif node.node_type == 'Instruction':
             for child in node.children:
                 self.generate(child)
-        elif node.node_type == 'VariableDeclaration':
+        elif node.node_type == 'Declaration':
             var_type = node.children[0].value
             identifier = node.children[1].value
             if len(node.children) > 2:
@@ -70,38 +83,38 @@ class CodeGenerator:
 
     def generate_class_declaration(self, node):
         '''Генерирует код для объявления класса'''
-        # Получаем модификатор доступа (если есть)
+        class_name = node.children[0].value
+
         access_modifier = ''
-        if node.children and node.children[0].node_type == 'AccessModifier':
-            access_modifier = node.children[0].value + ' '  # например 'public' или 'private'
+        access_modifier = 'public' + ' '
 
-        # Получаем имя класса
-        if len(node.children) > 1 and node.children[0].node_type == 'ClassName':
-            class_name = node.children[0].value
-        else:
-            class_name = 'None'  # если имя класса не передано, используем 'None' для отладки
-
-        # Начинаем блок объявления класса
         self.code.append(f'{access_modifier}class {class_name} {{')
 
-        # Обрабатываем переменные внутри класса (если есть)
         for child in node.children[1:]:
-            if child.node_type == 'VariableDeclaration':
-                self.generate_variable_declaration(child)
+            print(child.node_type)
+            if child.node_type == 'AccessModifier':
+                self.generate_access_modifier(child)
 
-        # Закрываем блок класса
         self.code.append('}')
 
-    def generate_variable_declaration(self, node):
-        '''Генерирует поля для класса'''
+    def generate_access_modifier(self, node):
+        '''Генерирует код для переменных с модификатором доступа'''
+        access_modifier = node.value + ' '
+
+        for child in node.children[0:]:
+            if child.node_type == 'Declaration':
+                self.generate_variable_declaration(child, access_modifier)
+
+    def generate_variable_declaration(self, node, access_modifier=''):
+        '''Генерирует поля для класса с учетом модификатора доступа'''
         var_type = node.children[0].value
         identifier = node.children[1].value
-        # Проверяем, есть ли значение по умолчанию для переменной
+
         if len(node.children) > 2:
             value = node.children[2].value
-            self.code.append(f'    {var_type} {identifier} = {value};')
+            self.code.append(f'    {access_modifier}{var_type} {identifier} = {value};')
         else:
-            self.code.append(f'    {var_type} {identifier};')
+            self.code.append(f'    {access_modifier}{var_type} {identifier};')
 
     def get_code(self):
         return "\n".join(self.code)

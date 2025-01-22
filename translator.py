@@ -2,6 +2,9 @@ from lex_analizer import Buffer, LexicalAnalyzer
 from typing import List
 from syntax_analaizer import Parser, Token, Node
 from generator import CodeGenerator
+import sys
+from PyQt5.QtWidgets import (QApplication, QWidget, QVBoxLayout,
+                             QHBoxLayout, QLabel, QTextEdit, QPushButton)
 
 
 def preproc(pretokens) -> List[Token]:
@@ -57,56 +60,134 @@ def preproc_cin(program_node):
                 raise Exception(f'нельзя считать необъявленную переменную{id}')
 
 
-if __name__ == '__main__':
+class TranslatorApp(QWidget):
+    def __init__(self):
+        super().__init__()
+        self.setWindowTitle("C++ to Java Translator")
 
-    # считываем исходную программу
-    buffer = Buffer()
-    Analyzer = LexicalAnalyzer()
+        # Установка основного макета
+        main_layout = QVBoxLayout()
 
-    fullTokens: List[Token] = []
+        # Левая панель для кода на C++
+        self.cpp_text = QTextEdit()
+        cpp_label = QLabel("Код на C++:")
 
-    token = []
-    lexeme = []
-    row = []
-    column = []
+        # Правая панель для кода на Java
+        self.java_output = QTextEdit()
+        java_label = QLabel("Код на Java:")
 
-    print(buffer.load_buffer())
-    for i in buffer.load_buffer():
-        t, lex, lin, col = Analyzer.tokenize(i)
-        token += t
-        lexeme += lex
-        row += lin
-        column += col
+        # Кнопки
+        self.translate_button = QPushButton("Транслировать")
+        self.clear_button = QPushButton("Очистить")
 
-    # создаем массив токенов
-    for i in range(len(token)):
-        fullToken = Token(token[i], lexeme[i], row[i], column[i])
-        fullTokens.append(fullToken)
+        # Ошибки
+        self.error_output = QTextEdit()
+        error_label = QLabel("Ошибки:")
+        self.error_output.setStyleSheet("background-color: lightpink;")
+        self.error_output.setReadOnly(True)  # По желанию, сделаем поле только для чтения
 
-    # удаляем пробелы и переносы строки
-    tokens = preproc(fullTokens)
+        # Установка макета для панели с кодом
+        code_layout = QHBoxLayout()
+        code_layout.addWidget(cpp_label)
+        code_layout.addWidget(self.cpp_text)
+        code_layout.addWidget(java_label)
+        code_layout.addWidget(self.java_output)
 
-    # печать токенов
-    for i in range(len(tokens)):
-        print(tokens[i])
+        # Кнопки
+        button_layout = QHBoxLayout()
+        button_layout.addWidget(self.translate_button)
+        button_layout.addWidget(self.clear_button)
 
-    # создаем парсер
-    parser = Parser(tokens)
+        # Добавление элементов в основной макет
+        main_layout.addLayout(code_layout)
+        main_layout.addLayout(button_layout)
+        main_layout.addWidget(error_label)
+        main_layout.addWidget(self.error_output)  # Поле ошибок внизу
 
-    # строим дерево
-    program_node = parser.parse_program()
+        self.setLayout(main_layout)
 
-    # выводим дерево
-    # parser.print_syntax_tree(program_node)
+        # Привязка функций к кнопкам
+        self.translate_button.clicked.connect(self.translate_code)
+        self.clear_button.clicked.connect(self.clear_fields)
 
-    # обрабатываем все cin, чтобы добавить к ним тип данных
-    preproc_cin(program_node)
+    def translate_code(self):
+        # Здесь ваша логика трансляции кода
+        # try:
+        cpp_code = self.cpp_text.toPlainText()
+        if not cpp_code:
+            self.error_output.setPlainText("Ошибка: поле C++ пусто. Пожалуйста, введите код для трансляции.")
+            return
 
-    # еще раз печатаем дерево для проверки синов
-    parser.print_syntax_tree(program_node)
+        with open("program.cpp", 'w') as file:
+            file.write(cpp_code)
 
-    # генерируем джава-код
-    generator = CodeGenerator()
-    generator.generate(program_node)
-    java_code = generator.get_code()
-    print(java_code)
+        # Предположим, вы совершаете трансляцию и получаете java_code
+        try:
+            buffer = Buffer()
+            Analyzer = LexicalAnalyzer()
+
+            fullTokens: List[Token] = []
+
+            token = []
+            lexeme = []
+            row = []
+            column = []
+
+            print(buffer.load_buffer())
+            for i in buffer.load_buffer():
+                t, lex, lin, col = Analyzer.tokenize(i)
+                token += t
+                lexeme += lex
+                row += lin
+                column += col
+
+            # создаем массив токенов
+            for i in range(len(token)):
+                fullToken = Token(token[i], lexeme[i], row[i], column[i])
+                fullTokens.append(fullToken)
+
+            # удаляем пробелы и переносы строки
+            tokens = preproc(fullTokens)
+
+            # печать токенов
+            for i in range(len(tokens)):
+                print(tokens[i])
+
+            # создаем парсер
+            parser = Parser(tokens)
+
+            # строим дерево
+            program_node = parser.parse_program()
+
+            # выводим дерево
+            # parser.print_syntax_tree(program_node)
+
+            # обрабатываем все cin, чтобы добавить к ним тип данных
+            preproc_cin(program_node)
+
+            # еще раз печатаем дерево для проверки синов
+            parser.print_syntax_tree(program_node)
+
+            # генерируем джава-код
+            generator = CodeGenerator()
+            generator.generate(program_node)
+            java_code = generator.get_code()
+
+        except Exception as e:
+            self.error_output.setPlainText(str(e))
+        else:
+            self.error_output.clear()
+            self.java_output.setPlainText(java_code)
+
+    def clear_fields(self):
+        self.cpp_text.clear()
+        self.java_output.clear()
+        self.error_output.clear()
+
+
+if __name__ == "__main__":
+    app = QApplication(sys.argv)
+    translator_app = TranslatorApp()
+    translator_app.resize(800, 600)  # Установка начального размера окна
+    translator_app.show()
+    sys.exit(app.exec_())

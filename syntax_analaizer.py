@@ -90,7 +90,7 @@ class Parser:
             elif token.token == 'K17':
                 node.add_child(self.parse_main())
             else:
-                print(token.token)
+                raise Exception(f'ожидалось объявление функции или класса, а получили {token.token}')
         return node
 
     def parse_namespace(self):
@@ -156,6 +156,8 @@ class Parser:
             node.add_child(self.parse_class_declaration())
         elif token.token == 'K4':
             node.add_child(self.parse_while())
+        elif token.token == 'K6':
+            node.add_child(self.parse_if())
 
         else:
             print('exeption', token.token, token.row, token.column, self.position)
@@ -165,42 +167,33 @@ class Parser:
     def parse_class_declaration(self):
         '''Парсит объявление класса'''
         token = self.current_token()
-        if token.token == 'K9':  # Проверяем, начинается ли с ключевого слова 'class'
+        if token.token == 'K9':
             class_node = Node('ClassDeclaration')
-            #print(f"Позиция: {self.position}, Токен: {token.lexeme}")  # Для отладки
+            self.consume('K9')
 
-            self.consume('K9')  # Поглощаем ключевое слово 'class'
-
-            # Ожидаем идентификатор (имя класса)
             token = self.current_token()
-            print(f"Позиция: {self.position}, Ожидается идентификатор, Токен: {token.lexeme}")  # Для отладки
             if token.token == 'ID':
                 class_node.add_child(Node('ClassName', token.lexeme))
                 self.consume('ID')
             else:
                 raise Exception(f'Ожидалось имя класса, но найдено {token.lexeme}')
 
-            # Проверяем, есть ли открывающая фигурная скобка '{'
             token = self.current_token()
-            print(f"Позиция: {self.position}, Ожидается {{, Токен: {token.lexeme}")  # Для отладки
             if token.token == 'D4':
                 self.consume('D4')
 
-                # Парсим тело класса
-                while self.current_token().token != 'D5':  # Пока не встретится закрывающая скобка '}'
-                    class_node.add_child(self.parse_class_body())
+                while self.current_token().token != 'D5':
+                    access_node = self.parse_class_body()
+                    if access_node:
+                        class_node.add_child(access_node) 
 
-                # Проверяем, есть ли закрывающая фигурная скобка '}'
                 token = self.current_token()
-                print(f"Позиция: {self.position}, Ожидается закрывающая }}, Токен: {token.lexeme}")  # Для отладки
                 if token.token == 'D5':
                     self.consume('D5')
                 else:
                     raise Exception('Пропущена закрывающая фигурная скобка класса')
 
-                # Проверяем, есть ли точка с запятой после объявления класса
                 token = self.current_token()
-                print(f"Позиция: {self.position}, Ожидается ;, Токен: {token.lexeme}")  # Для отладки
                 if token.token == 'D3':
                     self.consume('D3')
                     return class_node
@@ -215,55 +208,45 @@ class Parser:
         '''Парсит содержимое тела класса (переменные, методы, модификаторы доступа)'''
         token = self.current_token()
 
-        # Логирование для отладки
-        print(f"Текущий токен в class body: {token.token} (позиция {self.position})")
+        while token.token != 'D5':
+            if token.token in ['K29', 'K30', 'K31']:
+                access_node = Node('AccessModifier', token.lexeme)
+                self.consume(token.token)
 
-        # Модификаторы доступа (public, private, protected)
-        if token.token in ['K15', 'K16', 'K31']:  # public, private, protected
-            access_node = Node('AccessModifier', token.lexeme)
-            self.consume(token.token)
-        
-            # После модификатора доступа мы можем встретить двоеточие или сразу переменные/методы
-            token = self.current_token()
-
-            if token.token == 'O29':  # Если это двоеточие (необходимо для методов и наследования)
-                self.consume('O29')  # Пропускаем двоеточие
-            
-                # После двоеточия мы можем встретить метод или конструктор
                 token = self.current_token()
 
-                # Если токен - идентификатор (имя метода или конструктора), парсим метод
-                if token.token == 'ID':
-                    return self.parse_method_declaration()
+                if token.token == 'O29':
+                    self.consume('O29')
 
-                else:
-                    raise Exception(f"Неподдерживаемый элемент после модификатора доступа с двоеточием: {token.token}")
+                    token = self.current_token()
 
-            elif token.token in ['K17', 'K18', 'K22']:  # Тип данных (int, float и т.д.)
+                while token.token != 'K29' or token.token != 'K30' or token.token != 'K31':
+                    token = self.current_token()
+
+                    if token.token == 'O29':
+                        self.consume('O29')
+
+                        token = self.current_token()
+
+                    elif token.token in ['K17', 'K18', 'K22', 'ID']:
+                        declaration_node = self.parse_declaration()
+                        access_node.add_child(declaration_node)
+                    else:
+                        break
+
+                return access_node
+
+            elif token.token in ['K17', 'K18', 'K22', 'ID']:
                 return self.parse_declaration()
 
-            elif token.token == 'ID':  # Имя метода
-                return self.parse_method_declaration()
-
             else:
-                raise Exception(f"Неподдерживаемый элемент после модификатора доступа: {token.token}")
-    
-        # Поля класса (переменные)
-        elif token.token in ['K17', 'K18', 'K22']:  # Тип данных (int, float, etc.)
-            return self.parse_declaration()
-
-        # Методы класса
-        elif token.token == 'ID':  # Имя метода
-            return self.parse_method_declaration()
-
-        else:
-            raise Exception(f'Неподдерживаемый элемент класса: {token.token}')
+                raise Exception(f'Неподдерживаемый элемент класса: {token.token}')
 
     def parse_declaration(self):
         '''Парсит объявление переменных'''
         token = self.current_token()
         if token.token in ['K17', 'K18', 'K22', 'ID']:
-            var_node = Node('VariableDeclaration')
+            var_node = Node('Declaration')
             var_type = token.lexeme
             self.consume(token.token)
             var_node.add_child(Node('Type', var_type))
@@ -279,6 +262,34 @@ class Parser:
                 raise Exception('пропущена точка с запятой')
             return var_node
         raise Exception('Unexpected token')
+
+    def parse_arguments(self):
+        token = self.current_token()
+        node = Node('Arguments')
+        while token.token != 'D7':
+            child_node = Node('Argument')
+            if token.token in ['K17', 'K18', 'K22', 'ID']:
+                child_node.add_child(Node('Type', token.lexeme))
+                self.consume(token.token)
+                token = self.current_token()
+                if token.token in ['K17', 'N1', 'N2', 'N3', 'K21', 'K23']:
+                    child_node.add_child(Node('Arg', token.lexeme))
+                    self.consume(token.token)
+                    token = self.current_token()
+                    if token.token == 'D2':
+                        self.consume(token.token)
+                        node.add_child(child_node)
+                    elif token.token == 'D7':
+                        self.consume(token.token)
+                        node.add_child(child_node)
+                        break
+                    else:
+                        raise Exception("пропущена запятая или закрывающая скобка")
+                else:
+                    raise Exception(f"ожидался аргумент, а получили{token.lexeme}")
+            else:
+                raise Exception(f"ожидался тип данных, а получили{token.lexeme}")
+        return node
 
     def parse_cout(self):
         '''Парсит вывод'''
@@ -322,8 +333,7 @@ class Parser:
             self.consume('ID')
             return id_node
         else:
-            # raise Exception(f'ожидался идентификатор, а получили {token.token}')
-            print(f'ожидался идентификатор, а получили {token.token}')
+            raise Exception(f'ожидался идентификатор, а получили {token.token}')
 
     def parse_assignment(self):
         '''Парсит присваивание, пытаюсь запихнуть сюда
@@ -363,25 +373,7 @@ class Parser:
             else:
                 raise Exception('ошибка выражения3')
         else:
-            raise Exception('ошибка выражения1')
-        
-    # def parse_math_log_expression(self, parent_node):
-    #     token = self.current_token()
-    #     while token.token != 'D3':
-    #         if token.token == 'D7':
-    #             break
-    #         if token.token in ['O1', 'O4', 'O7', 'O11', 'O9', 'O24']:
-    #             parent_node.add_child(Node('Operator', token.lexeme))
-    #             self.consume(token.token)
-    #             if token.token == 'D6':
-    #                 self.consume('D6')
-    #                 while token.token != 'D7': 
-    #                     parent_node.add_child(self.parse_expression())
-    #                     self.parse_math_log_expression(parent_node)
-    #             parent_node.add_child(self.parse_expression())
-            
-    #         token = self.current_token()
-                
+            raise Exception('ошибка выражения1')            
 
     def parse_expression(self):
         '''Парсит значение переменной (тоже слегка бесполезная функция)'''
@@ -408,6 +400,67 @@ class Parser:
             return value_node
         else:
             raise Exception('Expected expression')
+
+    def parse_if(self):
+        '''Парсит конструкцию if с возможной веткой else'''
+        node = Node('If')
+        token = self.current_token()
+
+        if token.token == 'K6':  # "if"
+            self.consume('K6')
+            condition_node = Node('Condition')
+            token = self.current_token()
+
+            if token.token == 'D6':  # "("
+                self.consume('D6')
+                condition_node.add_child(self.parse_expression())
+                token = self.current_token()
+
+                while token.token != 'D7':  # ")"
+                    if token.token in ['O1', 'O4', 'O7', 'O11', 'O9', 'O24']:
+                        condition_node.add_child(Node('Operator', token.lexeme))
+                        self.consume(token.token)
+                        condition_node.add_child(self.parse_expression())
+                    token = self.current_token()
+
+                if token.token == 'D7':  # ")"
+                    self.consume('D7')
+                    node.add_child(condition_node)
+
+                    if self.current_token().token == 'D4':  # "{"
+                        self.consume('D4')
+                        body_node = Node('Body')
+
+                        while self.current_token().token != 'D5':  # "}"
+                            body_node.add_child(self.parse_code_block())
+
+                        self.consume('D5')  # Закрывающая скобка "}"
+                        node.add_child(body_node)
+
+                        # Проверка на наличие ветки else
+                        if self.current_token().token == 'K7':  # "else"
+                            self.consume('K7')
+                            else_node = Node('Else')
+
+                            if self.current_token().token == 'D4':  # "{"
+                                self.consume('D4')
+
+                                while self.current_token().token != 'D5':  # "}"
+                                    else_node.add_child(self.parse_code_block())
+
+                                self.consume('D5')  # Закрывающая скобка "}"
+                                node.add_child(else_node)
+                            else:
+                                raise Exception('Expected "{" after else')
+                        return node
+                    else:
+                        raise Exception('Expected "{" after if condition')
+                else:
+                    raise Exception('Expected ")" after if condition')
+            else:
+                raise Exception('Expected "(" after if')
+        else:
+            raise Exception('Expected "if" keyword')
 
     def parse_while(self):
         '''Парсит цикл while'''
