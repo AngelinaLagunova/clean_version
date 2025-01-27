@@ -87,6 +87,8 @@ class Parser:
                 node.add_child(self.parse_namespace())
             elif token.token == 'K9':
                 node.add_child(self.parse_class_declaration())
+            elif token.token in ['K17', 'K18', 'K22', 'ID', 'K20'] and self.tokens[self.position + 1].token != 'K32':
+                node.add_child(self.parse_declaration())
             elif token.token == 'K17':
                 node.add_child(self.parse_main())
             else:
@@ -138,6 +140,10 @@ class Parser:
         while self.position < len(self.tokens) - 1:
             node.add_child(self.parse_code_block())
         return node
+    
+        # while self.position < len(self.tokens) - 1:
+        #     node.add_child(self.parse_code_block())
+        # return node
 
     def parse_code_block(self):
         '''Парсит инструкции внутри тела функции. Пока
@@ -152,8 +158,8 @@ class Parser:
             node.add_child(self.parse_cout())
         elif token.token == 'K25':
             node.add_child(self.parse_cin())
-        elif token.token == 'K9':
-            node.add_child(self.parse_class_declaration())
+        # elif token.token == 'K9':
+        #     node.add_child(self.parse_class_declaration())
         elif token.token == 'K4':
             node.add_child(self.parse_while())
         elif token.token == 'K6':
@@ -263,33 +269,33 @@ class Parser:
             return var_node
         raise Exception('Unexpected token')
 
-    def parse_arguments(self):
-        token = self.current_token()
-        node = Node('Arguments')
-        while token.token != 'D7':
-            child_node = Node('Argument')
-            if token.token in ['K17', 'K18', 'K22', 'ID']:
-                child_node.add_child(Node('Type', token.lexeme))
-                self.consume(token.token)
-                token = self.current_token()
-                if token.token in ['K17', 'N1', 'N2', 'N3', 'K21', 'K23']:
-                    child_node.add_child(Node('Arg', token.lexeme))
-                    self.consume(token.token)
-                    token = self.current_token()
-                    if token.token == 'D2':
-                        self.consume(token.token)
-                        node.add_child(child_node)
-                    elif token.token == 'D7':
-                        self.consume(token.token)
-                        node.add_child(child_node)
-                        break
-                    else:
-                        raise Exception("пропущена запятая или закрывающая скобка")
-                else:
-                    raise Exception(f"ожидался аргумент, а получили{token.lexeme}")
-            else:
-                raise Exception(f"ожидался тип данных, а получили{token.lexeme}")
-        return node
+    # def parse_arguments(self):
+    #     token = self.current_token()
+    #     node = Node('Arguments')
+    #     while token.token != 'D7':
+    #         child_node = Node('Argument')
+    #         if token.token in ['K17', 'K18', 'K22', 'ID']:
+    #             child_node.add_child(Node('Type', token.lexeme))
+    #             self.consume(token.token)
+    #             token = self.current_token()
+    #             if token.token in ['K17', 'N1', 'N2', 'N3', 'K21', 'K23']:
+    #                 child_node.add_child(Node('Arg', token.lexeme))
+    #                 self.consume(token.token)
+    #                 token = self.current_token()
+    #                 if token.token == 'D2':
+    #                     self.consume(token.token)
+    #                     node.add_child(child_node)
+    #                 elif token.token == 'D7':
+    #                     self.consume(token.token)
+    #                     node.add_child(child_node)
+    #                     break
+    #                 else:
+    #                     raise Exception("пропущена запятая или закрывающая скобка")
+    #             else:
+    #                 raise Exception(f"ожидался аргумент, а получили{token.lexeme}")
+    #         else:
+    #             raise Exception(f"ожидался тип данных, а получили{token.lexeme}")
+    #     return node
 
     def parse_cout(self):
         '''Парсит вывод'''
