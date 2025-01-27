@@ -152,6 +152,8 @@ class Parser:
         token = self.current_token()
         if token.token == 'ID' and self.tokens[self.position+1].token in ['O23', 'O2', 'O3', 'O5', 'O6', 'O8', 'O10', 'O12']:
             node.add_child(self.parse_assignment())
+        elif token.token == 'ID' and self.tokens[self.position+1].token == 'D6':
+            node.add_child(self.parse_function_call())
         elif token.token in ['K17', 'K18', 'K22', 'ID']:
             node.add_child(self.parse_declaration())
         elif token.token == 'K24':
@@ -261,7 +263,7 @@ class Parser:
         token = self.current_token()
         if token.token == 'D3':
             self.consume('D3')  # ';'
-        elif token.token == 'D6':
+        elif token.token == 'D6': # ( 
             self.consume('D6')
             var_node.add_child(self.parse_function_declaration())
         else:
@@ -269,6 +271,7 @@ class Parser:
         return var_node
 
     def parse_function_declaration(self):
+        '''парсит объявление функции'''
         node = Node('FunctionDeclaration')
         node.add_child(self.parse_arguments())
         token = self.current_token()
@@ -284,10 +287,26 @@ class Parser:
         else:
             raise Exception('Ошибка 9: ожидалось тело функции')
 
+    def parse_function_call(self):
+        '''парсит вызов функции'''
+        token = self.current_token()
+        node = Node('FunctionCall')
+        node.add_child(Node('Identifier', token.lexeme))
+        self.consume(token.token)
+        token = self.current_token()
+        self.consume('D6')
+        node.add_child(self.parse_call_arguments())
+        token = self.current_token()
+        if token.token == 'D3':
+            self.consume('D3')
+            return node
+        else:
+            raise Exception('Ожидалась точка с запятой')
+
     def parse_arguments(self):
+        '''парсит аргументы функции при ее объявлении'''
         node = Node('Arguments')
         token = self.current_token()
-        # self.consume('D7')
         while token.token != 'D7':
             token = self.current_token()
             child_node = Node('Argument')
@@ -312,6 +331,30 @@ class Parser:
                     raise Exception(f"ожидался аргумент, а получили{token.lexeme}")
             else:
                 raise Exception(f"ожидался тип данных, а получили{token.lexeme}")
+        return node
+
+    def parse_call_arguments(self):
+        '''парсит аргументы функции при ее вызове'''
+        node = Node('Arguments')
+        token = self.current_token()
+        while token.token != 'D7':
+            token = self.current_token()
+            child_node = Node('Argument')
+            if token.token in ['N1', 'N2', 'N3', 'ID']:
+                child_node.add_child(Node('Value', token.lexeme))
+                self.consume(token.token)
+                token = self.current_token()
+                if token.token == 'D2':
+                    self.consume(token.token)
+                    node.add_child(child_node)
+                elif token.token == 'D7':
+                    self.consume(token.token)
+                    node.add_child(child_node)
+                    break
+                else:
+                    raise Exception("пропущена запятая или закрывающая скобка")
+            else:
+                raise Exception(f"ожидалось значение, а получили{token.lexeme}")
         return node
 
     def parse_cout(self):

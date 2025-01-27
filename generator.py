@@ -56,13 +56,21 @@ class CodeGenerator:
                     arguments = ''
                     for arg in agruments_node.children:
                         arguments += ' ' + arg.children[0].value + ' ' + arg.children[1].value + ','
-                    self.code.append(f'{var_type} {identifier} ({arguments[:-1]} )' + '{')
+                    self.code.append(f'{var_type} {identifier}({arguments[:-1]} )' + '{')
                     self.generate(next.children[1])
                     self.code.append('}')
                 else:
                     self.code.append(f'{var_type} {identifier} = {next.value};')
             else:
                 self.code.append(f'{var_type} {identifier};')
+        elif node.node_type == 'FunctionCall':
+            id = node.children[0].value
+            agruments_node = node.children[1]
+            arguments = ''
+            for arg in agruments_node.children:
+                arguments += ' ' + arg.children[0].value + ','
+            self.code.append(f'{id}({arguments[:-1]} );')
+
         elif node.node_type == 'ClassDeclaration':
             self.generate_class_declaration(node)
         elif node.node_type == 'Assignment':

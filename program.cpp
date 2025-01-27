@@ -8,4 +8,5 @@ float myfunc(int c, float dr){
 
 int main() {
     int a;
+    myfunc(a, a);
 }
