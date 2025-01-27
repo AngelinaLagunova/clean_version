@@ -81,7 +81,7 @@ class Parser:
         константы и тд'''
         node = Node('Program')
         node.add_child(self.parse_headers())
-        while self.position < len(self.tokens):
+        while self.position < len(self.tokens) - 1:
             token = self.current_token()
             if token.token == 'K11':
                 node.add_child(self.parse_namespace())
@@ -123,6 +123,7 @@ class Parser:
         thistokenlist = ['K17', 'K32', 'D6', 'D7', 'D4']
         if self.checkTokensList(thistokenlist):
             node = Node('MainFunction')
+            print(self.tokens[self.position].token)
             node.add_child(self.parse_body())
             token = self.current_token()
             if token.token == 'D5':
@@ -136,14 +137,13 @@ class Parser:
     def parse_body(self):
         '''Парсит тело функции (любой)'''
         node = Node('Body')
-        node.add_child(self.parse_code_block())
-        while self.position < len(self.tokens) - 1:
+        token = self.current_token()
+        while token.token != 'D5':
             node.add_child(self.parse_code_block())
-        return node
-    
-        # while self.position < len(self.tokens) - 1:
-        #     node.add_child(self.parse_code_block())
-        # return node
+            token = self.current_token()
+
+            if token.token == 'D5':
+                return node
 
     def parse_code_block(self):
         '''Парсит инструкции внутри тела функции. Пока
@@ -158,8 +158,6 @@ class Parser:
             node.add_child(self.parse_cout())
         elif token.token == 'K25':
             node.add_child(self.parse_cin())
-        # elif token.token == 'K9':
-        #     node.add_child(self.parse_class_declaration())
         elif token.token == 'K4':
             node.add_child(self.parse_while())
         elif token.token == 'K6':
@@ -251,51 +249,70 @@ class Parser:
     def parse_declaration(self):
         '''Парсит объявление переменных'''
         token = self.current_token()
-        if token.token in ['K17', 'K18', 'K22', 'ID']:
-            var_node = Node('Declaration')
-            var_type = token.lexeme
-            self.consume(token.token)
-            var_node.add_child(Node('Type', var_type))
-            var_node.add_child(self.parse_identifier())
-            token = self.current_token()
-            if token.token == 'O23':
-                self.consume('O23')  # '='
-                var_node.add_child(self.parse_expression())
-            token = self.current_token()
-            if token.token == 'D3':
-                self.consume('D3')  # ';'
-            else:
-                raise Exception('пропущена точка с запятой')
-            return var_node
-        raise Exception('Unexpected token')
+        var_node = Node('Declaration')
+        var_type = token.lexeme
+        self.consume(token.token)
+        var_node.add_child(Node('Type', var_type))
+        var_node.add_child(self.parse_identifier())
+        token = self.current_token()
+        if token.token == 'O23':
+            self.consume('O23')  # '='
+            var_node.add_child(self.parse_expression())
+        token = self.current_token()
+        if token.token == 'D3':
+            self.consume('D3')  # ';'
+        elif token.token == 'D6':
+            self.consume('D6')
+            var_node.add_child(self.parse_function_declaration())
+        else:
+            raise Exception('пропущена точка с запятой')
+        return var_node
 
-    # def parse_arguments(self):
-    #     token = self.current_token()
-    #     node = Node('Arguments')
-    #     while token.token != 'D7':
-    #         child_node = Node('Argument')
-    #         if token.token in ['K17', 'K18', 'K22', 'ID']:
-    #             child_node.add_child(Node('Type', token.lexeme))
-    #             self.consume(token.token)
-    #             token = self.current_token()
-    #             if token.token in ['K17', 'N1', 'N2', 'N3', 'K21', 'K23']:
-    #                 child_node.add_child(Node('Arg', token.lexeme))
-    #                 self.consume(token.token)
-    #                 token = self.current_token()
-    #                 if token.token == 'D2':
-    #                     self.consume(token.token)
-    #                     node.add_child(child_node)
-    #                 elif token.token == 'D7':
-    #                     self.consume(token.token)
-    #                     node.add_child(child_node)
-    #                     break
-    #                 else:
-    #                     raise Exception("пропущена запятая или закрывающая скобка")
-    #             else:
-    #                 raise Exception(f"ожидался аргумент, а получили{token.lexeme}")
-    #         else:
-    #             raise Exception(f"ожидался тип данных, а получили{token.lexeme}")
-    #     return node
+    def parse_function_declaration(self):
+        node = Node('FunctionDeclaration')
+        node.add_child(self.parse_arguments())
+        token = self.current_token()
+        if token.token == 'D4':
+            self.consume('D4')
+            node.add_child(self.parse_body())
+            token = self.current_token()
+            if token.token == 'D5':
+                self.consume('D5')
+                return node
+            else:
+                raise Exception('не закрыта фигурная скобка')
+        else:
+            raise Exception('Ошибка 9: ожидалось тело функции')
+
+    def parse_arguments(self):
+        node = Node('Arguments')
+        token = self.current_token()
+        # self.consume('D7')
+        while token.token != 'D7':
+            token = self.current_token()
+            child_node = Node('Argument')
+            if token.token in ['K17', 'K18', 'K22', 'ID']:
+                child_node.add_child(Node('Type', token.lexeme))
+                self.consume(token.token)
+                token = self.current_token()
+                if token.token == 'ID':
+                    child_node.add_child(Node('Arg', token.lexeme))
+                    self.consume(token.token)
+                    token = self.current_token()
+                    if token.token == 'D2':
+                        self.consume(token.token)
+                        node.add_child(child_node)
+                    elif token.token == 'D7':
+                        self.consume(token.token)
+                        node.add_child(child_node)
+                        break
+                    else:
+                        raise Exception("пропущена запятая или закрывающая скобка")
+                else:
+                    raise Exception(f"ожидался аргумент, а получили{token.lexeme}")
+            else:
+                raise Exception(f"ожидался тип данных, а получили{token.lexeme}")
+        return node
 
     def parse_cout(self):
         '''Парсит вывод'''

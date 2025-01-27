@@ -50,7 +50,17 @@ class CodeGenerator:
             var_type = node.children[0].value
             identifier = node.children[1].value
             if len(node.children) > 2:
-                self.code.append(f'{var_type} {identifier} = {node.children[2].value};')
+                next = node.children[2]
+                if next.node_type == 'FunctionDeclaration':
+                    agruments_node = next.children[0]
+                    arguments = ''
+                    for arg in agruments_node.children:
+                        arguments += ' ' + arg.children[0].value + ' ' + arg.children[1].value + ','
+                    self.code.append(f'{var_type} {identifier} ({arguments[:-1]} )' + '{')
+                    self.generate(next.children[1])
+                    self.code.append('}')
+                else:
+                    self.code.append(f'{var_type} {identifier} = {next.value};')
             else:
                 self.code.append(f'{var_type} {identifier};')
         elif node.node_type == 'ClassDeclaration':
