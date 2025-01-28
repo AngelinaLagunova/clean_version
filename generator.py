@@ -1,6 +1,6 @@
 class CodeGenerator:
     def __init__(self):
-        self.code = []  # Инициализируем список для хранения кода
+        self.code = []
 
     def generate(self, node):
         if node.node_type == 'Program':
@@ -33,7 +33,7 @@ class CodeGenerator:
                     for sub_child in child.children:
                         self.generate(sub_child)
                     self.code.append('}')
-                if child.node_type == 'Else':  # Обработка ветки else
+                if child.node_type == 'Else':
                     self.code.append('else {')
                     for sub_child in child.children:
                         self.generate(sub_child)
@@ -52,13 +52,7 @@ class CodeGenerator:
             if len(node.children) > 2:
                 next = node.children[2]
                 if next.node_type == 'FunctionDeclaration':
-                    agruments_node = next.children[0]
-                    arguments = ''
-                    for arg in agruments_node.children:
-                        arguments += ' ' + arg.children[0].value + ' ' + arg.children[1].value + ','
-                    self.code.append(f'{var_type} {identifier}({arguments[:-1]} )' + '{')
-                    self.generate(next.children[1])
-                    self.code.append('}')
+                    self.generate_function_declaration(var_type, identifier, next, '')
                 else:
                     self.code.append(f'{var_type} {identifier} = {next.value};')
             else:
@@ -79,6 +73,27 @@ class CodeGenerator:
             self.code.append(f'{identifier} {assign_operator} {" ".join([child.value for child in node.children[2:]])};')
         elif node.node_type == 'Cout':
             self.code.append(f'System.out.println({node.value});')
+        elif node.node_type == 'ClassBlockDeclaration':
+            ClassDeclarated = node.children[0].value
+            ClassDeclaratedName = node.children[1].value
+            ClassDeclaratedSourceName = node.children[2].value
+            arguments_node = node.children[3]
+            arguments = ''
+            for arg in arguments_node.children:
+                arguments += arg.children[0].value + ','
+            self.code.append(f'{ClassDeclarated} {ClassDeclaratedName} = new {ClassDeclaratedSourceName}({arguments[:-1]});')
+        elif node.node_type == 'ClassBlockDeclarationMethod':
+            ClassDeclarated = node.children[0].value
+            ClassDeclaratedName = node.children[1].value
+            arguments_node = node.children[2]
+            arguments = ''
+            for arg in arguments_node.children:
+                arguments += arg.children[0].value + ','
+            self.code.append(f'{ClassDeclarated}.{ClassDeclaratedName}({arguments[:-1]});')
+        elif node.node_type == 'ClassBlockDeclarationSimple':
+            NameClass = node.children[0].value
+            Name = node.children[1].value
+            self.code.append(f'{NameClass} {Name} = new {NameClass}();')
         elif node.node_type == 'Cin':
             value = node.children[1].value
             if 'import java.util.Scanner;' not in self.code:
@@ -96,20 +111,31 @@ class CodeGenerator:
             else:
                 raise Exception(f'ошибка типа данных считываемой переменной{node.children[0].value}')
             self.code.append(f'{node.children[0].value} = scanner.next{type}();')
+        elif node.node_type == 'Return':
+            self.generate_return(node)
         else:
             raise Exception(f'Unknown node type: {node.node_type}')
+
+    def generate_function_declaration(self, var_type, identifier, node, access_modifier):
+        '''Генерирует код для метода'''
+        arguments_node = node.children[0]
+        arguments = ''
+        for arg in arguments_node.children:
+            arguments += ' ' + arg.children[0].value + ' ' + arg.children[1].value + ','
+        if access_modifier != '':
+            self.code.append(f'{access_modifier} {var_type} {identifier}({arguments[:-1]} )' + ' {')
+        else:
+            self.code.append(f'{var_type} {identifier}({arguments[:-1]} )' + ' {')
+        self.generate(node.children[1])
+        self.code.append('}')
 
     def generate_class_declaration(self, node):
         '''Генерирует код для объявления класса'''
         class_name = node.children[0].value
-
-        access_modifier = ''
         access_modifier = 'public' + ' '
-
         self.code.append(f'{access_modifier}class {class_name} {{')
 
         for child in node.children[1:]:
-            print(child.node_type)
             if child.node_type == 'AccessModifier':
                 self.generate_access_modifier(child)
 
@@ -117,22 +143,33 @@ class CodeGenerator:
 
     def generate_access_modifier(self, node):
         '''Генерирует код для переменных с модификатором доступа'''
-        access_modifier = node.value + ' '
+        access_modifier = node.value
 
         for child in node.children[0:]:
             if child.node_type == 'Declaration':
                 self.generate_variable_declaration(child, access_modifier)
 
-    def generate_variable_declaration(self, node, access_modifier=''):
+    def generate_variable_declaration(self, node, access_modifier):
         '''Генерирует поля для класса с учетом модификатора доступа'''
         var_type = node.children[0].value
         identifier = node.children[1].value
-
         if len(node.children) > 2:
             value = node.children[2].value
-            self.code.append(f'    {access_modifier}{var_type} {identifier} = {value};')
+            next = node.children[2]
+            if next.node_type == 'FunctionDeclaration':
+                self.generate_function_declaration(var_type, identifier, next, access_modifier)
+            else:
+                self.code.append(f'{var_type} {identifier} = {next.value};')
         else:
+            access_modifier = access_modifier + ' '
             self.code.append(f'    {access_modifier}{var_type} {identifier};')
+
+    def generate_return(self, node):
+        '''Генерирует код для оператора return'''
+        if node.children:
+            self.code.append(f'return {node.children[0].value};')
+        else:
+            self.code.append('return;')
 
     def get_code(self):
         return "\n".join(self.code)

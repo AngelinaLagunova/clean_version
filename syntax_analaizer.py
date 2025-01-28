@@ -152,23 +152,108 @@ class Parser:
         token = self.current_token()
         if token.token == 'ID' and self.tokens[self.position+1].token in ['O23', 'O2', 'O3', 'O5', 'O6', 'O8', 'O10', 'O12']:
             node.add_child(self.parse_assignment())
+        elif token.token == 'ID' and self.tokens[self.position+1].token == 'D1':
+            node.add_child(self.parse_class_declaration_block_method())
+        elif token.token == 'ID' and self.tokens[self.position+3].token == 'O23':
+            node.add_child(self.parse_class_declaration_block())
         elif token.token == 'ID' and self.tokens[self.position+1].token == 'D6':
             node.add_child(self.parse_function_call())
-        elif token.token in ['K17', 'K18', 'K22', 'ID']:
+        elif token.token in ['K17', 'K18', 'K22']:
             node.add_child(self.parse_declaration())
         elif token.token == 'K24':
             node.add_child(self.parse_cout())
+        elif token.token == 'ID' and self.tokens[self.position+1].token == 'ID':
+            node.add_child(self.ClassDeclarationInsideBlock())
         elif token.token == 'K25':
             node.add_child(self.parse_cin())
         elif token.token == 'K4':
             node.add_child(self.parse_while())
         elif token.token == 'K6':
             node.add_child(self.parse_if())
+        elif token.token == 'K12':
+            node.add_child(self.parse_return())
 
         else:
             print('exeption', token.token, token.row, token.column, self.position)
             raise Exception('ошибка в блоке кода')
         return node
+    
+    def ClassDeclarationInsideBlock(self):
+        '''парсим объявление одного класса в блоке кода (па парам парам апарам па па па)'''
+        token = self.current_token()
+        class_node = Node('ClassBlockDeclarationSimple')
+        self.consume('ID')
+        class_node.add_child(Node('ClassDeclaratedSimpleNameClass', token.lexeme))
+        token = self.current_token()
+        self.consume('ID')
+        class_node.add_child(Node('ClassDeclaratedSimpleName', token.lexeme))
+        self.consume('D3')
+        return class_node
+
+
+    def parse_class_declaration_block(self):
+        '''парсим объявление метода, сука дайте поспать'''
+        token = self.current_token()
+        class_node = Node('ClassBlockDeclaration')
+        class_node.add_child(Node('ClassDeclarated', token.lexeme))
+        self.consume('ID')
+        self.consume('O7')
+        token = self.current_token()
+        class_node.add_child(Node('ClassDeclaratedName', token.lexeme))
+        self.consume('ID')
+        token = self.current_token()
+        self.consume('O23')
+        token = self.current_token()
+        self.consume('K27')
+        token = self.current_token()
+        class_node.add_child(Node('ClassDeclaratedSourceName', token.lexeme))
+        self.consume('ID')
+        token = self.current_token()
+        self.consume('D6')
+        token = self.current_token()
+        if self.tokens[self.position+1].token == 'D7':
+            self.consume('D7')
+        else:
+            class_node.add_child(self.parse_call_arguments())
+        self.consume('D3')
+        token = self.current_token()
+        return(class_node)
+
+    def parse_class_declaration_block_method(self):
+        '''парсим объявление класса в блоке, делаю с закрытыми глазами'''
+        token = self.current_token()
+        class_node = Node('ClassBlockDeclarationMethod')
+        class_node.add_child(Node('ClassName', token.lexeme))
+        self.consume('ID')
+        self.consume('D1')
+        token = self.current_token()
+        class_node.add_child(Node('ClassMethodDeclarationName', token.lexeme))
+        self.consume('ID')
+        self.consume('D6')        
+        if self.tokens[self.position+1].token == 'D7':
+            self.consume('D7')
+        else:
+            class_node.add_child(self.parse_call_arguments())
+        self.consume('D3')
+        return(class_node)
+
+    def parse_return(self):
+        '''Парсит оператор return'''
+        self.consume('K12')
+        return_node = Node('Return')
+        token = self.current_token()
+    
+        if token.token not in ['D3', 'D7']:
+            expression_node = self.parse_expression()
+            return_node.add_child(expression_node)
+
+        token = self.current_token()
+        if token.token == 'D3':
+            self.consume('D3')
+        else:
+            raise Exception('Ожидалась точка с запятой после return')
+
+        return return_node
 
     def parse_class_declaration(self):
         '''Парсит объявление класса'''
@@ -213,6 +298,7 @@ class Parser:
     def parse_class_body(self):
         '''Парсит содержимое тела класса (переменные, методы, модификаторы доступа)'''
         token = self.current_token()
+        access_node = None
 
         while token.token != 'D5':
             if token.token in ['K29', 'K30', 'K31']:
@@ -220,30 +306,45 @@ class Parser:
                 self.consume(token.token)
 
                 token = self.current_token()
-
                 if token.token == 'O29':
                     self.consume('O29')
-
                     token = self.current_token()
 
-                while token.token != 'K29' or token.token != 'K30' or token.token != 'K31':
-                    token = self.current_token()
-
+                while token.token not in ['K29', 'K30', 'K31', 'D5']:
                     if token.token == 'O29':
                         self.consume('O29')
-
-                        token = self.current_token()
-
-                    elif token.token in ['K17', 'K18', 'K22', 'ID']:
-                        declaration_node = self.parse_declaration()
-                        access_node.add_child(declaration_node)
+                    elif token.token in ['K17', 'K18', 'K22', 'ID', 'K20']:
+                        next_token = self.current_token()
+                        if next_token.token == 'ID':
+                            self.consume('ID')
+                            next_token = self.current_token()
+                            if next_token.token == 'D6':
+                                function_node = self.parse_function_declaration()
+                                access_node.add_child(function_node)
+                            else:
+                                declaration_node = self.parse_declaration()
+                                access_node.add_child(declaration_node)
+                        else:
+                            declaration_node = self.parse_declaration()
+                            access_node.add_child(declaration_node)
                     else:
                         break
+                    token = self.current_token()
 
                 return access_node
 
-            elif token.token in ['K17', 'K18', 'K22', 'ID']:
-                return self.parse_declaration()
+
+            elif token.token in ['K17', 'K18', 'K22', 'ID', 'K20']:
+                next_token = self.current_token()
+                if next_token.token == 'ID':
+                    self.consume('ID')
+                    next_token = self.current_token()
+                    if next_token.token == 'D6':
+                        return self.parse_function_declaration()
+                    else:
+                        return self.parse_declaration()
+                else:
+                    return self.parse_declaration()
 
             else:
                 raise Exception(f'Неподдерживаемый элемент класса: {token.token}')
