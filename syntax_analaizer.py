@@ -92,7 +92,7 @@ class Parser:
             elif token.token == 'K17':
                 node.add_child(self.parse_main())
             else:
-                raise Exception(f'ожидалось объявление функции или класса, а получили {token.token}')
+                raise Exception('Ошибка 2: ожидалось имя класса')
         return node
 
     def parse_namespace(self):
@@ -103,7 +103,7 @@ class Parser:
             node.add_child(Node('Namespace', 'std'))
             return node
         else:
-            raise Exception('ошибка пространства имен')
+            raise Exception('Ошибка 18: ожидалось пространство имен')
 
     def parse_headers(self):
         '''Парсит заголовки (любые)'''
@@ -114,7 +114,7 @@ class Parser:
             if self.checkTokensList(thistokenlist):
                 node.add_child(Node('ID', self.tokens[self.position - 3].lexeme))
             else:
-                raise Exception('ошибка объявления заголовка')
+                raise Exception('Ошибка 0: ожидалось имя заголовочного файла')
             token = self.current_token()
         return node
 
@@ -132,7 +132,7 @@ class Parser:
             else:
                 raise Exception('не закрыта фигурная скобка')
         else:
-            raise Exception('ошибка объявления главной функции')
+            raise Exception('Ошибка 1: ожидалась главная функция main')
 
     def parse_body(self):
         '''Парсит тело функции (любой)'''
@@ -174,8 +174,8 @@ class Parser:
             node.add_child(self.parse_return())
 
         else:
-            print('exeption', token.token, token.row, token.column, self.position)
-            raise Exception('ошибка в блоке кода')
+            # print('exeption', token.token, token.row, token.column, self.position)
+            raise Exception('Ошибка 17: ожидалась инструкция')
         return node
     
     def ClassDeclarationInsideBlock(self):
@@ -293,7 +293,7 @@ class Parser:
             else:
                 raise Exception('Пропущена открывающая фигурная скобка при объявлении класса')
         else:
-            raise Exception(f'Ожидалось ключевое слово class, но найдено {token.lexeme}')
+            raise Exception(f'Ошибка 19: Ожидалось ключевое слово class, но найдено {token.lexeme}')
 
     def parse_class_body(self):
         '''Парсит содержимое тела класса (переменные, методы, модификаторы доступа)'''
@@ -347,7 +347,7 @@ class Parser:
                     return self.parse_declaration()
 
             else:
-                raise Exception(f'Неподдерживаемый элемент класса: {token.token}')
+                raise Exception(f'Ошибка 3: ожидалось тело класса: {token.token}')
 
     def parse_declaration(self):
         '''Парсит объявление переменных'''
@@ -429,9 +429,9 @@ class Parser:
                     else:
                         raise Exception("пропущена запятая или закрывающая скобка")
                 else:
-                    raise Exception(f"ожидался аргумент, а получили{token.lexeme}")
+                    raise Exception(f"Ошибка 5: ожидалось имя переменной, а получили{token.lexeme}")
             else:
-                raise Exception(f"ожидался тип данных, а получили{token.lexeme}")
+                raise Exception(f"Ошибка 4: ожидался тип данных переменной, а получили{token.lexeme}")
         return node
 
     def parse_call_arguments(self):
@@ -455,7 +455,7 @@ class Parser:
                 else:
                     raise Exception("пропущена запятая или закрывающая скобка")
             else:
-                raise Exception(f"ожидалось значение, а получили{token.lexeme}")
+                raise Exception(f"Ошибка 6: ожидалось значение, а получили{token.lexeme}")
         return node
 
     def parse_cout(self):
@@ -500,7 +500,7 @@ class Parser:
             self.consume('ID')
             return id_node
         else:
-            raise Exception(f'ожидался идентификатор, а получили {token.token}')
+            raise Exception(f'Ошибка 10: ожидался идентификатор, а получили {token.token}')
 
     def parse_assignment(self):
         '''Парсит присваивание, пытаюсь запихнуть сюда
@@ -538,9 +538,9 @@ class Parser:
                 self.consume('D3')
                 return node
             else:
-                raise Exception('ошибка выражения3')
+                raise Exception('Ошибка 11: ожидалось выражение')
         else:
-            raise Exception('ошибка выражения1')            
+            raise Exception('Ошибка 11: ожидалось выражение')            
 
     def parse_expression(self):
         '''Парсит значение переменной (тоже слегка бесполезная функция)'''
@@ -566,7 +566,7 @@ class Parser:
             self.consume(token.token)
             return value_node
         else:
-            raise Exception('Expected expression')
+            raise Exception('Ошибка 6: ожидалось значение')
 
     def parse_if(self):
         '''Парсит конструкцию if с возможной веткой else'''
