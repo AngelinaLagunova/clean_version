@@ -5,6 +5,7 @@ using namespace std;
 int main() {
     int a;
     cin>>a;
+a  4;
     if(a > 1){
         cout<<"more then 1";
     }

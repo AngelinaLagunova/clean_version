@@ -534,6 +534,8 @@ class Parser:
                     node.add_child(Node('Operator', token.lexeme))
                     self.consume(token.token)
                     node.add_child(self.parse_expression())
+                else:
+                    raise Exception('Ошибка 16: ожидался оператор присваивания')
             if self.tokens[self.position].token == 'D3':
                 self.consume('D3')
                 return node
@@ -588,7 +590,10 @@ class Parser:
                         condition_node.add_child(Node('Operator', token.lexeme))
                         self.consume(token.token)
                         condition_node.add_child(self.parse_expression())
+                    else:
+                        raise Exception("Ошибка 12: ожидалось логическое выражение")
                     token = self.current_token()
+
 
                 if token.token == 'D7':  # ")"
                     self.consume('D7')
@@ -649,6 +654,8 @@ class Parser:
                         condition_node.add_child(Node('Operator', token.lexeme))
                         self.consume(token.token)
                         condition_node.add_child(self.parse_expression())
+                    else:
+                        raise Exception("Ошибка 12: ожидалось логическое выражение")
                     token = self.current_token()
 
                 if token.token == 'D7':
