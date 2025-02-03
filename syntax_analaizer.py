@@ -584,7 +584,7 @@ class Parser:
                 token = self.current_token()
 
                 while token.token != 'D7':  # ")"
-                    if token.token in ['O1', 'O4', 'O7', 'O11', 'O9', 'O24']:
+                    if token.token in ['O1', 'O4', 'O7', 'O11', 'O9', 'O24', 'O18', 'O21', 'O19', 'O22', 'O20']:
                         condition_node.add_child(Node('Operator', token.lexeme))
                         self.consume(token.token)
                         condition_node.add_child(self.parse_expression())
@@ -645,7 +645,7 @@ class Parser:
                 token = self.current_token()
 
                 while token.token != 'D7':
-                    if token.token in ['O1', 'O4', 'O7', 'O11', 'O9', 'O24']:
+                    if token.token in ['O1', 'O4', 'O7', 'O11', 'O9', 'O24', 'O18', 'O21', 'O19', 'O22', 'O20']:
                         condition_node.add_child(Node('Operator', token.lexeme))
                         self.consume(token.token)
                         condition_node.add_child(self.parse_expression())

@@ -83,7 +83,7 @@ class LexicalAnalyzer:
             ('O27', r'::'),
             ('O28', r'\n'),               # NEW LINE
             ('O29', r':'),
-            ('N3', r'\"\w*\"'),           # String
+            ('N3', r'"([^"\\]*(\\.[^"\\]*)*)"'),           # String
             ('N4', r'\'\w\''),           # char
             ('ID', r'[a-zA-Z]\w*'),       # IDENTIFIERS
             ('N2', r'\d(\d)*\.\d(\d)*'),  # FLOAT
